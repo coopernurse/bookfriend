@@ -1,5 +1,8 @@
 (ns bookfriend.collections)
 
+(defn assoc-keys [m1 m2 k]
+  (apply assoc m1 (apply concat (map (fn [x] (list x (x m2))) k))))
+
 (defn create-map-exclude-nil [xs]
   (into {} (remove (comp nil? second) xs)))
 

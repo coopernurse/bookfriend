@@ -1,0 +1,56 @@
+/*	This file is part of CSS Buttons.
+
+    CSS Buttons is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    CSS Buttons is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with CSS Buttons. If not, see <http://www.gnu.org/licenses/>.
+*/
+
+/* 	Name: 	sample_a 
+	Desc:	Blue Button	*/
+	button.cssbutton.sample.a {background:url("sample_aLeft.gif") no-repeat 0px center;} /* Using Horizontal BG Positioning */
+	button.cssbutton.sample.a span {background:url("sample_aRight.gif") no-repeat right 0%; } /* Using Vertical BG Positioning */
+	
+	button.cssbutton.sample.a:hover {background:url("sample_aLeft.gif") no-repeat -40px center;} /* Negative X Positioning Method */
+	button.cssbutton.sample.a:hover span {background:url("sample_aRight.gif") no-repeat right 100%; }
+
+	a.cssbutton.sample.a {background:url("sample_aLeft.gif") no-repeat 0px center;} /* Using Horizontal BG Positioning */
+	a.cssbutton.sample.a span {background:url("sample_aRight.gif") no-repeat right 0%; } /* Using Vertical BG Positioning */
+	
+	a.cssbutton.sample.a:hover {background:url("sample_aLeft.gif") no-repeat -40px center;} /* Negative X Positioning Method */
+	a.cssbutton.sample.a:hover span {background:url("sample_aRight.gif") no-repeat right 100%; }
+
+	div.cssbutton.sample.a {background:url("sample_aLeft.gif") no-repeat 0px center;} /* Using Horizontal BG Positioning */
+	div.cssbutton.sample.a input {background:url("sample_aRight.gif") no-repeat right 0%; } /* Using Vertical BG Positioning */
+	
+	div.cssbutton.sample.a:hover {background:url("sample_aLeft.gif") no-repeat -40px center;} /* Negative X Positioning Method */
+	div.cssbutton.sample.a:hover input {background:url("sample_aRight.gif") no-repeat right 100%; }
+	
+/* 	Name: 	sample_b 
+	Desc:	Orange Button	*/
+	button.cssbutton.sample.b {background:url("sample_bLeft.gif") no-repeat 0px center;} /* Using Horizontal BG Positioning */
+	button.cssbutton.sample.b span {background:url("sample_bRight.gif") no-repeat right 0%; } /* Using Vertical BG Positioning */
+	
+	button.cssbutton.sample.b:hover {background:url("sample_bLeft.gif") no-repeat -40px center;} /* Negative X Positioning Method */
+	button.cssbutton.sample.b:hover span {background:url("sample_bRight.gif") no-repeat right 100%; }
+
+	a.cssbutton.sample.b {background:url("sample_bLeft.gif") no-repeat 0px center;} /* Using Horizontal BG Positioning */
+	a.cssbutton.sample.b span {background:url("sample_bRight.gif") no-repeat right 0%; } /* Using Vertical BG Positioning */
+	
+	a.cssbutton.sample.b:hover {background:url("sample_bLeft.gif") no-repeat -40px center;} /* Negative X Positioning Method */
+	a.cssbutton.sample.b:hover span {background:url("sample_bRight.gif") no-repeat right 100%; }
+
+	div.cssbutton.sample.b {background:url("sample_bLeft.gif") no-repeat 0px center;} /* Using Horizontal BG Positioning */
+	div.cssbutton.sample.b input {background:url("sample_bRight.gif") no-repeat right 0%; } /* Using Vertical BG Positioning */
+	
+	div.cssbutton.sample.b:hover {background:url("sample_bLeft.gif") no-repeat -40px center;} /* Negative X Positioning Method */
+	div.cssbutton.sample.b:hover input {background:url("sample_bRight.gif") no-repeat right 100%; }	
+	

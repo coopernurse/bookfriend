@@ -1,0 +1,59 @@
+/*	This file is part of CSS Buttons.
+
+    CSS Buttons is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    CSS Buttons is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with CSS Buttons. If not, see <http://www.gnu.org/licenses/>.
+*/
+
+/* 	Overrides the CSS Buttons Framework */
+button.cssbutton.sample span,a.cssbutton.sample span,div.cssbutton.sample input {
+color:#924F4F;
+}
+
+/* 	Name: 	sample a 
+	Desc:	Blue Button	*/
+button.cssbutton.sample.a span,a.cssbutton.sample.a span,div.cssbutton.sample.a input {
+background:url("sample_aRight.gif") no-repeat right 0;
+}
+
+button.cssbutton.sample.a,a.cssbutton.sample.a,div.cssbutton.sample.a {
+background:url("sample_aLeft.gif") no-repeat 0 center;
+}
+
+button.cssbutton.sample.a:hover span,a.cssbutton.sample.a:hover span,div.cssbutton.sample.a:hover input {
+color:#666;
+background:url("sample_aRight.gif") no-repeat right 100%;
+}
+
+button.cssbutton.sample.a:hover,a.cssbutton.sample.a:hover,div.cssbutton.sample.a:hover {
+background:url("sample_aLeft.gif") no-repeat -255px center;
+}
+
+/* 	Name: 	sample b 
+	Desc:	Orange Button	*/
+button.cssbutton.sample.b span,a.cssbutton.sample.b span,div.cssbutton.sample.b input {
+color:#FFFFFF;
+background:url("sample_bRight.gif") no-repeat right 0;
+}
+
+button.cssbutton.sample.b,a.cssbutton.sample.b,div.cssbutton.sample.b {
+background:url("sample_bLeft.gif") no-repeat 0 center;
+}
+
+button.cssbutton.sample.b:hover span,a.cssbutton.sample.b:hover span,div.cssbutton.sample.b:hover input {
+color:#FFFFFF;
+background:url("sample_bRight.gif") no-repeat right 100%;
+}
+
+button.cssbutton.sample.b:hover,a.cssbutton.sample.b:hover,div.cssbutton.sample.b:hover {
+background:url("sample_bLeft.gif") no-repeat -255px center;
+}

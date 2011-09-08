@@ -12,11 +12,24 @@ The site uses:
 
 ## Dev Notes
 
-    To test URL fetch when in REPL:
-    
+    ;; To test URL fetch when in REPL:
     (require '[appengine-magic.local-env-helpers :as ae-helpers])
     (ae-helpers/appengine-init (java.io.File. ".") 8090)
 
+    ;; To run dev server:
+    ;; Start REPL, then run:
+    (require '[appengine-magic.core :as ae])
+    (require '[bookfriend.app_servlet :as app])
+    (ae/serve app/bookfriend-app)
+
+    ;; To stop / start
+    (ae/stop)
+    (ae/serve app/bookfriend-app)
+
+## Pushing to App Engine ##
+
+    lein appengine-prepare
+    ~/bin/appengine-java-sdk-1.5.3/bin/appcfg.sh update war
 
 
 ## License

@@ -276,16 +276,74 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defpartial book-image-cell [book]
+  (if (:image-url book)
+    [:div {:class "overlay-container"}
+     [:img {:class "book_thumbnail" :src (:image-url book) } ]
+     [:img {:class "overlay" :style "opacity:0.9;filter:alpha(opacity=90)"
+        :src (format "/css/images/%s_small.jpg" (:platform book)) } ] ]))
+
+(defpartial mytasks-view-empty []
+  [:h2 {:class "title"} "No Tasks"]
+  [:p {:class "instructions" } "You currently have no tasks to complete.
+       Check back later to see if someone wants to
+       borrow one of your books, or if you have received
+       a book from another user." ])
+
+(defpartial mytasks-to-loan-row [book]
+  [:tr
+   [:td (book-image-cell book) ]
+   [:td (trunc (:title book) 40) " by " (trunc (:author book) 40) ]
+   [:td {:class "action"}
+    [:a {:class "cssbutton sample b loan"
+         :href (str "/secure/loan-book?book-id=" (:id book)) }
+      [:span "Loan book"] ]]])
+
+(defpartial mytasks-view-to-loan [to-loan]
+  (if (not (empty? to-loan))
+    [:div {:class "books"}
+     [:h2 "Book to loan out"]
+     [:table {:class "books-to-loan-out gray-and-wirey"}
+      [:thead [:tr [:th "book"] [:th "action"] ] ]
+      [:tbody
+       (map mytasks-to-loan-row to-loan) ] ] ]))
+
+(defpartial mytasks-to-ack-row [book]
+  [:tr
+   [:td (book-image-cell book) ]
+   [:td (trunc (:title book) 40) " by " (trunc (:author book) 40) ]
+   [:td (:from-email book) ]
+   [:td {:class "action"}
+     [:a {:class "ack"
+          :href (str "/book-ack-loan/" (:loan-id book)) } "I got it!" ]
+     [:br ] [:br ]
+     [:a {:class "ack"
+          :href (str "/book-ack-loan-fail/" (:loan-id book)) } "No, the loan failed" ] ] ])
+
+(defpartial mytasks-view-to-ack [to-ack]
+  (if (not (empty? to-ack))
+    [:div {:class "books"}
+     [:h2 "We think someone loaned you these book"]
+     [:table {:class "books-to-loan-out gray-and-wirey"}
+      [:thead [:tr [:th "book"] [:th "loaned by"] [:th "action"] ] ]
+      [:tbody
+       (map mytasks-to-ack-row to-ack) ] ] ]))
+
+(defpartial mytasks-view [to-loan to-ack]
+  (layout "My Tasks"
+    (if (and (empty? to-loan) (empty? to-ack))
+      (mytasks-view-empty)
+      (list
+        (mytasks-view-to-loan to-loan)
+        (mytasks-view-to-ack to-ack)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defpartial mybooks-row [book]
   (let [id (:id book)]
     [:tr {:id (str "book-" id)}
-     [:td {:class "cover"}
-      (if (:image-url book)
-        [:div {:class "overlay-container"}
-         [:img {:class "book_thumbnail" :src (:image-url book) } ]
-         [:img {:class "overlay" :style "opacity:0.9;filter:alpha(opacity=90)"
-            :src (format "/css/images/%s_small.jpg" (:platform book)) } ] ]) ]
-     [:td {:class "titleAuthor"} (trunc (:title book) 30) " by " (trunc (:author book) 40) ]
+     [:td {:class "cover"} (book-image-cell book) ]
+     [:td {:class "titleAuthor"} (trunc (:title book) 40) " by " (trunc (:author book) 40) ]
      [:td
       [:a {:href (str "/secure/mybooks?cancel=" id) :class "cssbutton sample b" }
        [:span "remove"] ] ] ]))
@@ -303,17 +361,21 @@
 
 (defpartial mybooks-view [books]
   (layout "My Books"
-    [:h2 {:class "title"} ]
-    (mybooks-table "Books I Want" (books "want"))
-    (mybooks-table "Books I Have" (books "have"))
-    (javascript-tag "
-      function book_cancel(book_id) {
-        jQuery.get('book_cancel', { 'book-id' : book_id },
-            function(data) {
-                jQuery('#book-'+book_id).remove();
-            });
-        return false;
-      }") ))
+    [:h2 {:class "title"} "My Books" ]
+    (if (empty? books)
+      [:p {:class "instructions"} "You currently have no books selected.  If you click 'I Want' or
+           'I Have' for a book, it will show up here."]
+      (list
+        (mybooks-table "Books I Want" (books "want"))
+        (mybooks-table "Books I Have" (books "have"))
+        (javascript-tag "
+          function book_cancel(book_id) {
+            jQuery.get('book_cancel', { 'book-id' : book_id },
+                function(data) {
+                    jQuery('#book-'+book_id).remove();
+                });
+            return false;
+          }") ))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

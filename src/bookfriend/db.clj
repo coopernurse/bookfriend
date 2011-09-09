@@ -63,7 +63,9 @@
 ;;;;;;;;;;
 
 (defn get-books [book-ids]
-  (ds/query :kind book-entity :filter (:in :id book-ids)))
+  (if (empty? book-ids)
+    [ ]
+    (ds/query :kind book-entity :filter (:in :id book-ids))))
 
 (defn merge-book [search-book db-book]
   (let [now (System/currentTimeMillis)]
@@ -121,6 +123,12 @@
                   books (get-books (keys user-books-map))
            books-status (map #(assoc % :status (:status (user-books-map (:id %)))) books) ]
     (group-by #(:status %) books-status)))
+
+(defn get-books-to-loan [user-id]
+  nil)
+
+(defn get-loans-to-ack [user-id]
+  nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; config ;;

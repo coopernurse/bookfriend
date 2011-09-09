@@ -51,6 +51,11 @@
     (if cancel (db/delete-book-user (:id user) cancel))
     (mybooks-view (db/get-user-books (:id user)))))
 
+(defpage "/secure/mytasks" {:as req}
+  (let [   user (requtil/get-user)
+        to-loan (db/get-books-to-loan (:id user))
+         to-ack (db/get-loans-to-ack (:id user)) ]
+    (mytasks-view to-loan to-ack)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; settings ;;

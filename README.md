@@ -31,6 +31,23 @@ The site uses:
     lein appengine-prepare
     ~/bin/appengine-java-sdk-1.5.3/bin/appcfg.sh update war
 
+## Data model notes
+
+    Entities:
+      - book
+      - user
+      - book-user
+      - loan
+
+    
+
+## Migration from old system
+
+### Data import
+
+    lein uberjar
+    java -cp bookfriend-1.0.0-SNAPSHOT-standalone.jar bookfriend.dataimport localhost:3306:user:pw localhost:8080
+    
 
 ## License
 

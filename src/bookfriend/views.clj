@@ -276,6 +276,47 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defpartial mybooks-row [book]
+  (let [id (:id book)]
+    [:tr {:id (str "book-" id)}
+     [:td {:class "cover"}
+      (if (:image-url book)
+        [:div {:class "overlay-container"}
+         [:img {:class "book_thumbnail" :src (:image-url book) } ]
+         [:img {:class "overlay" :style "opacity:0.9;filter:alpha(opacity=90)"
+            :src (format "/css/images/%s_small.jpg" (:platform book)) } ] ]) ]
+     [:td {:class "titleAuthor"} (trunc (:title book) 30) " by " (trunc (:author book) 40) ]
+     [:td
+      [:a {:href (str "/secure/mybooks?cancel=" id) :class "cssbutton sample b" }
+       [:span "remove"] ] ] ]))
+
+(defpartial mybooks-table [title books]
+  (if (not (empty? books))
+    (list
+      [:h2 title]
+      [:table {:class "books-i-want gray-and-wirey"}
+       [:thead
+        [:tr
+         [:th {:class "cover"} "cover"] [:th "book"] [:th "action"] ]]
+       [:tbody
+        (map mybooks-row books) ]] )))
+
+(defpartial mybooks-view [books]
+  (layout "My Books"
+    [:h2 {:class "title"} ]
+    (mybooks-table "Books I Want" (books "want"))
+    (mybooks-table "Books I Have" (books "have"))
+    (javascript-tag "
+      function book_cancel(book_id) {
+        jQuery.get('book_cancel', { 'book-id' : book_id },
+            function(data) {
+                jQuery('#book-'+book_id).remove();
+            });
+        return false;
+      }") ))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defpartial book-status-button [status-label book]
   [:div {:style "clear: both;" }
    [:a {:class "cssbutton sample b" :href "#"

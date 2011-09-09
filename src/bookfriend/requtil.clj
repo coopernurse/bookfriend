@@ -16,7 +16,7 @@
         @*user*))))
 
 (defn logged-in? []
-  (not (nil? (dbg (get-user)))))
+  (not (nil? (get-user))))
 
 (defn absolute-url
   "Converts uri into a full URL based on the current request

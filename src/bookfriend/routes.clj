@@ -46,6 +46,12 @@
     (db/delete-book-user (:id user) book-id)
     (book-list-cols (db/get-book-with-status book-id user))))
 
+(defpage "/secure/mybooks" {:keys [cancel] }
+  (let [user (requtil/get-user)]
+    (if cancel (db/delete-book-user (:id user) cancel))
+    (mybooks-view (db/get-user-books (:id user)))))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; settings ;;
 ;;;;;;;;;;;;;;

@@ -68,11 +68,19 @@
 (defn merge-book [search-book db-book]
   (let [now (System/currentTimeMillis)]
     (if db-book
+       ; existing book - merge search result fields into row from db
       (merge db-book
-        (select-keys (assoc search-book :modified now) [:author :title :product-url :image-url :modified]))
-      (book-entity. (:id search-book) (:platform search-book)
-        (:author search-book) (:title search-book)
-        (:product-url search-book) (:image-url search-book) 0 now now))))
+        (select-keys
+          (assoc search-book :modified now)
+          [:author :title :product-url :image-url :modified]))
+      ; book we haven't seen before - create entity from search result
+      (book-entity.
+        (:id search-book)
+        (:platform search-book)
+        (:author search-book)
+        (:title search-book)
+        (:product-url search-book)
+        (:image-url search-book) 0 now now))))
 
 (defn get-book-user [user-id book-id]
   (let [id (str user-id "-" book-id) ]
@@ -108,28 +116,30 @@
 (defn get-book-with-status [book-id user]
   (first (merge-book-status (get-books [book-id]) user)))
 
+(defn get-user-books [user-id]
+  (let [ user-books-map (array-to-map (ds/query :kind book-user-entity :filter (= :user-id user-id) :sort :modified) :book-id)
+                  books (get-books (keys user-books-map))
+           books-status (map #(assoc % :status (:status (user-books-map (:id %)))) books) ]
+    (group-by #(:status %) books-status)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; config ;;
 ;;;;;;;;;;;;
 
-(defn get-all-config
-  []
+(defn get-all-config []
   (map entity-to-map (ds/query :kind config-entity :limit 1000)))
 
-(defn get-all-config-as-map
-  []
+(defn get-all-config-as-map []
   (apply array-map
     (flatten
       (map
         (fn [nv] (list (:id nv) (:value nv)))
         (get-all-config)))))
 
-(defn put-config
-  [key value]
+(defn put-config [key value]
   (ds/save! (config-entity. key value)))
 
-(defn delete-config-by-id
-  [key]
+(defn delete-config-by-id [key]
   (let [b (ds/retrieve config-entity key)]
     (if b
       (ds/delete! b))))

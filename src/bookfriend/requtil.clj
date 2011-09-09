@@ -7,15 +7,16 @@
 (declare *request*)
 (declare *user*)
 
-(defn logged-in? []
-  (not (nil? (session/get :user-id))))
-
 (defn get-user []
-  (if (logged-in?)
-    (if (nil? @*user*)
-      (reset! *user* (dbg (db/get-user (session/get :user-id))))
-      @*user*)
-    nil))
+  (let [user-id (session/get :user-id)]
+    (if (empty? user-id)
+      nil
+      (if (nil? @*user*)
+        (reset! *user* (db/get-user user-id))
+        @*user*))))
+
+(defn logged-in? []
+  (not (nil? (dbg (get-user)))))
 
 (defn absolute-url
   "Converts uri into a full URL based on the current request
@@ -28,6 +29,9 @@
       (absolute-url (.getScheme req) (.getServerName req) (.getServerPort req) (.getContextPath req) uri)))
   ([scheme host port context uri]
       (str scheme "://" host (if (or (= 80 port) (= 443 port)) "" (str ":" port)) context uri)))
+
+(defn request-param [key]
+  (.getParameter (:request *request*) key))
 
 (defn wrap-requtil
   [handler]

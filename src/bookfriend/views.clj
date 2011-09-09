@@ -40,7 +40,7 @@
   ([s max suffix]
     (if s
       (if (> (count s) max)
-        (str (subs s 0 (- (count s) (+ max (count suffix)))) suffix)
+        (str (subs s 0 (- max (count suffix))) suffix)
         s)
       s)))
 
@@ -52,21 +52,33 @@
   [xs]
   (clojure.string/join "\n" xs))
 
-(defn format-plural [num div singular plural]
+(defn format-plural [num singular plural]
+  (if (= 1 num) singular plural))
+
+(defn format-time-plural [num div singular plural]
   (let [r (.longValue (/ num div))]
-    (format "%d %s" r (if (= 1 r) singular plural))))
+    (format "%d %s" r (format-plural r singular plural))))
 
 (defn time-ago [millis]
   (let [sec (.longValue (/ (- (System/currentTimeMillis) millis) 1000))]
     (condp < sec
-      604800 (format "%s ago" (format-plural sec 604800 "week" "weeks"))
-      86400 (format "%s ago" (format-plural sec 86400 "day" "days"))
-      3600 (format "%s ago" (format-plural sec 3600 "hour" "hours"))
-      60 (format "%s ago" (format-plural sec 60 "minute" "minutes"))
+      604800 (format "%s ago" (format-time-plural sec 604800 "week" "weeks"))
+      86400 (format "%s ago" (format-time-plural sec 86400 "day" "days"))
+      3600 (format "%s ago" (format-time-plural sec 3600 "hour" "hours"))
+      60 (format "%s ago" (format-time-plural sec 60 "minute" "minutes"))
       "moments ago")))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defpartial clear-div []
   [:div {:class "cl"} "&nbsp;" ])
+
+(defpartial radio-group-item [name value label checked?]
+  [:input {:type "radio" :name name :value value :checked checked?} label ])
+  
+(defpartial radio-group [name default-val value-labels]
+  (let [val (or (requtil/request-param name) default-val)]
+    (map #(radio-group-item name (first %) (second %) (= val (first %)) ) value-labels)))
 
 (defpartial header-search-form []
   [:div {:class "book-form"}
@@ -76,7 +88,7 @@
      [:span {:class "field"}
       [:input {
         :class "blink" :type "text" :name "keyword" :size "50"
-        :value "Enter author or title"
+        :value (or (requtil/request-param "keyword") "Enter author or title")
         :onclick "if (this.value==='Enter author or title') { this.value = ''; }" } ] ] ]
     [:div {:class "search_options_wrapper"}
      [:div {
@@ -90,9 +102,7 @@
      [:label "Show books for:"]
      [:div {:class "books"}
       [:div {:class "book"}
-       [:input {:type "radio" :name "platform" :value "nook"} "Nook"]
-       [:input {:type "radio" :name "platform" :value "kindle"} "Kindle"]
-       [:input {:type "radio" :name "platform" :value "both" :checked "checked"} "Both"] ] ] ]
+       (radio-group "platform" "both" [["nook" "Nook"] ["kindle" "Kindle"] ["both" "Both"]]) ] ] ]
     (clear-div) ] ] )
 
 (defpartial header [title]
@@ -227,9 +237,7 @@
        [:li f-msg ] ] )))
 
 (defpartial err-message []
-; TODO: uncomment once we have a way to know if there are any errors
-;  (if (> (count (vali/get-errors)) 0)
-  (if false
+  (if (vali/errors?)
     [:ul {:class "errors"}
        [:li "Please correct the fields in red"] ] ))
 
@@ -237,8 +245,6 @@
   (list (flash-message) (err-message)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; form stuff ;;
-;;;;;;;;;;;;;;;;
 
 (defpartial error-item [[first-error]]
   [:p.error first-error])
@@ -269,6 +275,99 @@
      (check-box name checked? value) ]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defpartial book-status-button [status-label book]
+  [:div {:style "clear: both;" }
+   [:a {:class "cssbutton sample b" :href "#"
+        :onclick (format "return book_status('%s', '%s');" (:id book) (first status-label)) }
+    [:span (second status-label) ]]])
+
+(defpartial book-status-buttons [book]
+  (let [user (requtil/get-user)]
+    (if (and user (nil? (:user-status book)))
+      (if (contains? (:platforms user) (:platform book))
+        (map book-status-button [["want" "I want"] ["have" "I have"] ["dislike" "Don't want"]] (repeat book))
+        [:div [:p "To borrow or lend
+                   this book, please enter your "
+                   (:platform book)
+                   " email address in Settings" ] ]))))
+
+(defpartial book-have-want [book]
+  (let [ have (:have-count book)
+         want (:want-count book)]
+    (if (or (> want 0) (> have 0))
+      [:div {:class "have-want"}
+       (cond
+         (and (> want 0) (> have 0))
+          (format "%d %s this book and %d %s it"
+            have (format-plural have "person has" "persons have")
+            want (format-plural want "person wants" "persons want"))
+         (> want 0)
+          (format "%d %s this book" want (format-plural want "person wants" "persons want"))
+         (> have 0)
+          (format "%d %s this book" have (format-plural have "person has" "persons have"))) ])))
+
+(defpartial book-user-cancel [book]
+  (let [status (:user-status book)
+            id (:id book) ]
+    (if status
+      [:div {:class "have-want"}
+       (condp = status
+        "have" "You have this book to lend"
+        "want" "You want to borrow this book"
+        "dislike" "You do not want this book")
+       " ("
+       [:a {:href "#" :onclick (format "return book_cancel('%s');" id) } "cancel" ]
+       ")" ])))
+
+(defpartial book-list-cols [book]
+  [:td
+    [:div {:class "book-cover overlay-container"}
+     (if (not (empty? (:image-url book)))
+      [:img {:class "book" :src (:image-url book)}])
+      [:img {:class "overlay"
+             :src (format "/css/images/%s_small.jpg" (:platform book)) } ] ] ]
+   [:td
+    [:h3 {:class "title"} (trunc (:title book) 70) ]
+    [:p {:class "author"} (trunc (:author book) 40) ]
+    (if (> (:not-loanable-count book) 0)
+      [:a {:href "#notlendable_tooltip" :class "tooltiplink"} "May not be lendable"] ) 
+    (book-have-want book)
+    (book-user-cancel book) ]
+   [:td {:class "option-buttons"}
+    (book-status-buttons book)
+    [:div {:style "clear: both;"}
+     [:a {:class "cssbutton sample b" :href (:product-url book)
+          :target "_blank" } [:span "Book Info" ] ] ]
+    (clear-div) ] )
+
+(defpartial book-list-row [book row-css]
+  [:tr {:id (str "book-" (:id book))
+        :class (str "overlay-container book-item" row-css) }
+   (book-list-cols book) ])
+   
+(defpartial book-list-view [title books]
+  (layout title
+    [:table {:class "books-holder"}
+     [:tbody {:class "books-holder-body"}
+      (map book-list-row books (cycle ["" " book-item-odd"])) ] ]
+    (javascript-tag "
+      function book_cancel(book_id) {
+        jQuery.get('/secure/book-cancel', { 'book-id' : book_id },
+            function(data) {
+                jQuery('#book-'+book_id).html(data);
+            });
+        return false;
+      }
+
+      function book_status(book_id, status) {
+        jQuery.get('/secure/book-status', { 'book-id' : book_id, 'status' : status },
+            function(data) {
+                jQuery('#book-'+book_id).html(data);
+            });
+        return false;
+      }")
+    ))
 
 (defpartial settings-view [data]
   (layout "Settings"

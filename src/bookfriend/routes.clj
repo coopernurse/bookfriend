@@ -2,6 +2,7 @@
   (:use bookfriend.views)
   (:use [noir.core :only (defpage pre-route)])
   (:require [bookfriend.db :as db])
+  (:require [bookfriend.search :as search])
   (:require [bookfriend.requtil :as requtil])
   (:require [bookfriend.collections :as coll])
   (:require [clojure.contrib.json :as json])
@@ -27,6 +28,28 @@
 (defpage "/faq" {:as req}
   (faq-view))
 
+(defpage "/search" {:keys [keyword platform]}
+  (if (not (empty? keyword))
+    (let [kindle? (or (= "both" platform) (= "kindle" platform))
+            nook? (or (= "both" platform) (= "nook" platform))
+            books (search/search keyword kindle? nook?)]
+      (book-list-view "Search Results" (db/merge-book-status books (requtil/get-user))))
+    (home-view)))
+
+(defpage "/secure/book-status" {:keys [book-id status] }
+  (let [user (requtil/get-user)]
+    (db/put-book-user (:id user) book-id status nil)
+    (book-list-cols (db/get-book-with-status book-id user))))
+
+(defpage "/secure/book-cancel" {:keys [book-id] }
+  (let [user (requtil/get-user)]
+    (db/delete-book-user (:id user) book-id)
+    (book-list-cols (db/get-book-with-status book-id user))))
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;; settings ;;
+;;;;;;;;;;;;;;
+
 (defn optional-email [key val]
   (if (not (empty? val))
     (vali/rule (vali/is-email? val)
@@ -37,15 +60,15 @@
   (optional-email :kindle-email kindle-email)
   (vali/rule (vali/is-email? email)
     [:email "Please enter a valid email address"])
-  (not (dbg (vali/errors? :email :nook-email :kindle-email))))
+  (not (vali/errors? :email :nook-email :kindle-email)))
 
 (defpage [:get "/secure/settings"] {:as req}
   (settings-view (requtil/get-user)))
 
 (defpage [:post "/secure/settings" ] {:as req}
-  (if (settings-valid? (dbg req))
+  (if (settings-valid? req)
     (let [u (requtil/get-user)]
-      (db/put-user! (coll/assoc-keys u req [:email :nook-email :kindle-email :email-opt-out]))
+      (db/put-user! (merge u (select-keys req [:email :nook-email :kindle-email :email-opt-out])))
       (session/flash-put! "Settings Saved")))
   (settings-view req))
 
@@ -78,9 +101,9 @@
   (session/put! :user-id user-id)
   (db/create-user-if-new! user-id name)
   (let [u (db/get-user user-id)]
-    (dbg (if (empty? (:email u))
+    (if (empty? (:email u))
       (redirect-to-settings)
-      (response/redirect (requtil/absolute-url "/"))))))
+      (response/redirect (requtil/absolute-url "/")))))
 
 (defn make-provider-google []
   (oauth/make-provider-google "http://www-opensocial.googleusercontent.com/api/people/"))
@@ -91,6 +114,9 @@
 (defpage "/logout" {:as req}
   (session/remove! :user-id)
   (response/redirect "/"))
+
+(defpage "/login-admin" {:as req}
+  (response/redirect (user/login-url)))
 
 (defpage "/login-twitter" {:as req}
   (login-start "twitter" (oauth/make-provider-twitter)))

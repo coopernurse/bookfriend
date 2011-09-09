@@ -39,4 +39,4 @@
       [:pagenumber pagenumber]
       [:mid mid]])
     url (build-url "http://productsearch.linksynergy.com/productsearch" query-map)]
-    (parse-product-search-result (String. (:content (fetch/fetch url))))))
+    (parse-product-search-result (String. (:content (fetch/fetch url)) "utf-8"))))

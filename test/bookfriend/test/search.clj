@@ -1,5 +1,5 @@
-(ns bookfriend.test.linkshare
-  (:use [bookfriend.linkshare])
+(ns bookfriend.test.search
+  (:use [bookfriend.search])
   (:use [clojure.test]))
 
 (def result-xml "<result>
@@ -45,8 +45,8 @@
       :imageurl "http://images.barnesandnoble.com/pimages/gresources/ImageNA_product.gif"
   })
 
-(deftest test-productsearch-xml-parsing
-  (let [res (parse-product-search-result result-xml)]
+(deftest test-nook-search-xml-parsing
+  (let [res (parse-nook-search-result result-xml)]
     (is (= "29" (:TotalMatches res)))
     (is (= "1" (:TotalPages res)))
     (is (= expected-map (first (:items res))))))

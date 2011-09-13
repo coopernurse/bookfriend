@@ -14,6 +14,9 @@
 (defn array-to-map [xs key]
   (apply array-map (interleave (map #(key %) xs) xs)))
 
+(defn is-email? [x]
+  (and x (vali/is-email? x)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; entities ;;
 ;;;;;;;;;;;;;;
@@ -31,11 +34,23 @@
 ;; platform enum: "nook" "kindle"
 (ds/defentity book-user-entity [^:key id, user-id, book-id, status, loan-id, modified])
 
+;; success: boolean
+;; date-loaned: set when we create the loan record
+;; date-acked: set when to-user-id acknowledges that he loan succeeded or failed
+;;
+(ds/defentity loan-entity [^:key id, book-id, from-user-id, to-user-id, success, date-loaned, date-acked])
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn create-book-entity [id platform author title product-url image-url not-loanable-count]
-  (book-entity. id platform author title product-url image-url not-loanable-count nil nil))
+  (book-entity. id platform author title product-url image-url not-loanable-count 0 0))
 
 (defn create-user-entity [id name email kindle-email nook-email email-opt-out]
-  (user-entity. id name email kindle-email nook-email email-opt-out 0 nil nil))
+  (user-entity. id name email kindle-email nook-email email-opt-out 0 0 0))
+
+(defn create-loan-entity [id book-id from-user-id to-user-id]
+  (let [now (System/currentTimeMillis)]
+    (loan-entity. id book-id from-user-id to-user-id false now 0)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; user ;;
@@ -43,7 +58,7 @@
 
 (defn set-user-platform [u]
   (if u
-    (assoc u :platforms (set (filter #(vali/is-email? ((keyword (str % "-email")) u)) ["nook" "kindle"])))
+    (assoc u :platforms (set (filter #(is-email? ((keyword (str % "-email")) u)) ["nook" "kindle"])))
     u))
 
 (defn get-user [id]
@@ -58,14 +73,25 @@
     (if (not user)
       (put-user! (create-user-entity id name nil nil nil 0)))))
 
+(defn set-user-points [user-id points]
+  (let [user (get-user user-id) ]
+    (if user
+      (put-user! (assoc user :points points)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; book ;;
 ;;;;;;;;;;
+
+(defn get-book [book-id]
+  (ds/retrieve book-entity book-id))
 
 (defn get-books [book-ids]
   (if (empty? book-ids)
     [ ]
     (ds/query :kind book-entity :filter (:in :id book-ids))))
+
+(defn put-book! [book]
+  (ds/save! book))
 
 (defn merge-book [search-book db-book]
   (let [now (System/currentTimeMillis)]
@@ -105,10 +131,15 @@
     (ds/save! (map #(merge-book % (existing-book-map (:id %))) books))
     (map #(merge % (book-status-map (:id %))) books)))
 
+(defn put-book-user-save [user book-id status loan-id]
+  (let [id (str (:id user) "-" book-id)]
+    (ds/save! (book-user-entity. id (:id user) book-id status loan-id (System/currentTimeMillis)))
+    (if (< (:points user) 15)
+      (put-user! (assoc user :points (+ 1 (:points user)))))))
+
 (defn put-book-user [user-id book-id status loan-id]
-  (let [now (System/currentTimeMillis)
-         id (str user-id "-" book-id) ]
-    (ds/save! (book-user-entity. id user-id book-id status loan-id now))))
+  (let [user (get-user user-id)]
+    (if user (put-book-user-save user book-id status loan-id))))
 
 (defn delete-book-user [user-id book-id]
   (let [id (str user-id "-" book-id)
@@ -124,11 +155,72 @@
            books-status (map #(assoc % :status (:status (user-books-map (:id %)))) books) ]
     (group-by #(:status %) books-status)))
 
+(defn get-loan-recip [book-id]
+  (let [ book-users (ds/query :kind book-user-entity :filter [(= :book-id book-id) (= :loan-id "") (= :status "want")])
+           user-ids (map #(:user-id %) book-users) ]
+    (if (empty? user-ids)
+      []
+      (let [ users (sort-by :points > (ds/query :kind user-entity :filter (:in :id user-ids))) ]
+        (first users)))
+  ))
+
 (defn get-books-to-loan [user-id]
-  nil)
+  (let [ have (ds/query :kind book-user-entity
+                        :filter [(= :user-id user-id) (= :status "have") (= :loan-id "")])
+         have-ids (set (map #(:book-id %) have)) ]
+    (if (empty? have-ids)
+      [ ]
+      (let [want (ds/query :kind book-user-entity
+                        :filter [(:in :book-id have-ids) (= :status "want") (= :loan-id "")] )
+            want-ids (set (map #(:book-id %) want))]
+        (if (empty? want-ids)
+          [ ]
+          (let [want-by-book-id (group-by :book-id want)
+                want-user-ids (map #(:user-id %) want)
+                books (get-books want-ids)
+                books-with-recips (map #(assoc % :recips (want-by-book-id (:id %))) books) ]
+            books-with-recips))))))
 
 (defn get-loans-to-ack [user-id]
-  nil)
+  (let [ to-ack (ds/query :kind loan-entity :filter [(= :to-user-id user-id) (= :date-acked 0) ])
+         to-ack-map (array-to-map to-ack :book-id) ]
+    (if (empty? to-ack)
+      []
+      (let [books (get-books (keys to-ack-map))
+            books-with-loan-id (map #(assoc % :loan-id (:id (to-ack-map (:id %)))) books) ]
+        books-with-loan-id))))
+
+(defn platform-removed? [old-user new-user platform]
+  (let [kw (keyword (str platform "-email")) ]
+    (and (is-email? (kw old-user)) (not (is-email? (kw new-user))))))
+
+(defn removed-platforms [old-user new-user]
+  (filter #(platform-removed? old-user new-user %) [ "nook" "kindle" ]))
+
+(defn prune-user-books [user-id platform]
+  (let [book-user (ds/query :kind book-user-entity :filter [(= :user-id user-id) (= :loan-id "")])
+            books (get-books (set (map #(:book-id %) book-user)))
+        books-for-platform (filter #(= platform (:platform %)) books) ]
+    (doall (map #(delete-book-user user-id (:id %)) books-for-platform))))
+
+(defn prune-user-books-if-email-removed [old-user new-user]
+  (doall (map #(prune-user-books (:id old-user) %) (removed-platforms old-user new-user))))
+
+(defn set-loan-id-for-book-user [book-id user-id loan-id]
+  (let [book-user (get-book-user user-id book-id)
+              now (System/currentTimeMillis)]
+    (if book-user
+      (ds/save! (assoc book-user :loan-id loan-id :modified now)))))
+  
+(defn put-loan! [loan]
+  (let [now (System/currentTimeMillis) ]
+    (ds/save! (assoc loan :created (or (:created loan) now) :modified now))))
+
+(defn create-loan [book-id from-user-id to-user-id]
+  (put-loan! (create-loan-entity (.toString (java.util.UUID/randomUUID)) book-id from-user-id to-user-id)))
+
+(defn get-loan [loan-id]
+  (ds/retrieve loan-entity loan-id))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; config ;;

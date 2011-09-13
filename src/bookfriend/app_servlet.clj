@@ -2,7 +2,6 @@
   (:gen-class :extends javax.servlet.http.HttpServlet)
   (:require [bookfriend.requtil :as requtil])
   (:require [bookfriend.httpsession :as hs])
-  (:require [bookfriend.auth :as auth])
   (:require [noir.util.gae :as noir-gae])
   (:require [appengine-magic.core :as ae])
   (:use [appengine-magic.servlet :only [make-servlet-service-method]]))

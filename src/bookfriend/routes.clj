@@ -2,6 +2,7 @@
   (:use bookfriend.views)
   (:use [noir.core :only (defpage pre-route)])
   (:require [bookfriend.db :as db])
+  (:require [bookfriend.email :as email])
   (:require [bookfriend.search :as search])
   (:require [bookfriend.requtil :as requtil])
   (:require [bookfriend.collections :as coll])
@@ -38,7 +39,7 @@
 
 (defpage "/secure/book-status" {:keys [book-id status] }
   (let [user (requtil/get-user)]
-    (db/put-book-user (:id user) book-id status nil)
+    (db/put-book-user (:id user) book-id status "")
     (book-list-cols (db/get-book-with-status book-id user))))
 
 (defpage "/secure/book-cancel" {:keys [book-id] }
@@ -56,6 +57,84 @@
         to-loan (db/get-books-to-loan (:id user))
          to-ack (db/get-loans-to-ack (:id user)) ]
     (mytasks-view to-loan to-ack)))
+
+(defpage "/secure/loan-book" {:keys [book-id]}
+  (let [    user (requtil/get-user)
+         to-loan (db/get-books-to-loan (:id user))
+            book (first (filter #(= book-id (:id %)) to-loan)) ]
+    (if book
+      (let [ recip (db/get-loan-recip book-id) ]
+        (if recip
+          (loan-book-view book recip)
+          (response/redirect "/secure/mytasks")))
+      (response/redirect "/secure/mytasks"))))
+
+(defn loan-book-not-loanable [book-id user-id]
+  (let [book (db/get-book book-id) ]
+    (db/delete-book-user user-id book-id)
+    (if book
+      (db/put-book! (assoc book :not-loanable-count (+ 1 (:not-loanable-count book)))))))
+
+(defn loan-book-bad-recip [book-id recip-id]
+  (db/delete-book-user recip-id book-id))
+
+(defn loan-book-create [book-id from-user-id to-user-id]
+  (let [loan (db/create-loan book-id from-user-id to-user-id)
+        book (db/get-book book-id)
+        from-user (db/get-user from-user-id)
+          to-user (db/get-user to-user-id) ]
+    (db/set-loan-id-for-book-user book-id from-user-id (:id loan))
+    (db/set-loan-id-for-book-user book-id to-user-id (:id loan))
+    (email/send-confirm-loan book from-user to-user)
+    (email/send-loan-created book from-user to-user)
+    loan))
+
+;  - set date acked=now and success=true on loan record
+;  - email lender to let them know loan worked
+;  - increment from-user by 5 points
+;  - increment to-user by 2 points
+(defn loan-ack [loan-id user-id]
+  (let [loan (db/get-loan loan-id)]
+    (if (and loan (= user-id (:to-user-id loan)))
+      (let [from-user (db/get-user (:from-user-id loan))
+              to-user (db/get-user (:to-user-id loan))
+                 book (db/get-book (:book-id loan)) ]
+        (db/put-loan! (assoc loan :date-acked (System/currentTimeMillis) :success true))
+        (email/loan-ack-success book from-user)
+        (db/put-user! (assoc from-user :points (+ 5 (:points from-user))))
+        (db/put-user! (assoc to-user :points (+ 2 (:points to-user))))))))
+
+(defn loan-ack-fail [loan-id]
+  nil)
+
+(defpage "/secure/loan-book-bad-recip" {:keys [book-id recip-id]}
+  (loan-book-bad-recip book-id recip-id)
+  (session/flash-put! "Sorry about that. This recipient has been removed.")
+  (response/redirect (str "/secure/loan-book?book-id=" book-id)))
+
+(defpage "/secure/book-not-loanable" {:keys [book-id]}
+  (let [ user (requtil/get-user) ]
+    (loan-book-not-loanable book-id (:id user))
+    (session/flash-put! "Thanks for letting us know. We've removed this book from your task list")
+    (response/redirect "/secure/mytasks")))
+
+(defpage "/secure/loan-book-create" {:keys [book-id recip-id]}
+  (let [ user (requtil/get-user) ]
+    (loan-book-create book-id (:id user) recip-id)
+    (session/flash-put! "Thank you for loaning a book!")
+    (response/redirect "/secure/mytasks")))
+
+(defpage "/secure/book-ack-loan" {:keys [loan-id]}
+  (let [ user (requtil/get-user) ]
+    (loan-ack loan-id (:id user))
+    (session/flash-put! "Thanks for acknowledging the loan!")
+    (response/redirect "/secure/mytasks")))
+
+(defpage "/secure/book-ack-loan-fail" {:keys [loan-id]}
+  (loan-ack-fail loan-id)
+  (session/flash-put! "Thanks for letting us know. We have emailed the lender.
+     Please see if you can work out the problem together via email.")
+  (response/redirect "/secure/mytasks"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; settings ;;
@@ -78,8 +157,10 @@
 
 (defpage [:post "/secure/settings" ] {:as req}
   (if (settings-valid? req)
-    (let [u (requtil/get-user)]
+    (let [u (requtil/get-user)
+          req (assoc req :email-opt-out (or (:email-opt-out req) "1")) ]
       (db/put-user! (merge u (select-keys req [:email :nook-email :kindle-email :email-opt-out])))
+      (db/prune-user-books-if-email-removed u req)
       (session/flash-put! "Settings Saved")))
   (settings-view req))
 

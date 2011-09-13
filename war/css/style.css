@@ -329,7 +329,7 @@ table.gray-and-wirey tbody tr td {
     text-align: center;
 }
 
-.books-i-want tbody tr td .overlay-container > img.book_thumbnail {
+tbody tr td .overlay-container > img.book_thumbnail {
     height: 60px;
 }
 

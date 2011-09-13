@@ -1,0 +1,65 @@
+Done:
+    122:@app.route('/')
+    127:@app.route('/faq')
+    298:@app.route('/settings', methods=['GET', 'POST'])
+    327:@app.route('/login')
+    341:@app.route('/login_authorized_facebook')
+    352:@app.route('/login_authorized_twitter')
+    364:@app.route('/login_authorized_google')
+    384:@app.route('/logout')
+    261:@app.route('/search')
+    275:@app.route('/book_cancel')
+    286:@app.route('/book_status')
+    132:@app.route('/mybooks')
+    145:@app.route('/mytasks')
+    154:@app.route('/loan_book/<product_id>')
+
+To Do:
+    
+    ; when loaning a book:
+    182:@app.route('/loan_book_bad_recip/<product_id>/<bad_recip_id>')
+      - remove user-book record for bad recip
+      - show flash message
+      - show loan-book-vew
+        - make sure view handles case where recip is empty
+    197:@app.route('/loan_book_create/<product_id>/<recip_user_id>')
+      - create book-loan record
+      - update both user-book records and set loan-id
+      - email lender
+      - email recipient
+      - redirect to mytasks
+         - show flash message
+    207:@app.route('/loan_book_not_loanable/<product_id>')
+      - remove user-book record for user/book
+      - increment not-loanable-count for book
+      - redirect to mytasks
+         - show flash message
+         
+    ; when acking a loan:
+    216:@app.route('/book_ack_loan/<loan_id>')
+      - set date acked=now and success=true on loan record
+      - email lender to let them know loan worked
+      - increment from-user by 5 points
+      - increment to-user by 2 points
+      - flash message, refresh my tasks
+      - loan shouldn't show up in task list
+    224:@app.route('/book_ack_loan_fail/<loan_id>')
+      - set date acked=now and success=false on loan record
+      - email lender to let them know the loan failed
+      - flash message, refresh my tasks
+      - loan shouldn't show up in task list
+    
+    243:@app.route('/available')
+    310:@app.route('/external-want-book')
+    320:@app.route('/external-opt-out')
+    233:@app.route('/recommend')
+    Crons:
+      - send available books
+      - send books to lend
+
+    Send email when stuff happens
+      - book-ack-loan (2 separate emails)
+      - book-ack-loan-fail
+      - book-create-loan (2 separate emails)
+      - send-available-books (cron)
+      - send-books-to-lend (cron)

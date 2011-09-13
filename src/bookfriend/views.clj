@@ -3,11 +3,10 @@
   (:use [hiccup.core :only (resolve-uri)])
   (:use [hiccup.page-helpers])
   (:use [hiccup.form-helpers])
+  (:use [bookfriend.util])
   (:require [noir.validation :as vali])
   (:require [noir.session :as session])
   (:require [bookfriend.requtil :as requtil]))
-
-(defmacro dbg[x] `(let [x# ~x] (println '~x "=" x#) x#))
 
 (defn mock-sidebar-loader []
   { :total-users 302
@@ -34,15 +33,6 @@
 
 (defn set-sidebar-loader! [f]
   (swap! sidebar-loader f))
-
-(defn trunc
-  ([s max] (trunc s max "..."))
-  ([s max suffix]
-    (if s
-      (if (> (count s) max)
-        (str (subs s 0 (- max (count suffix))) suffix)
-        s)
-      s)))
 
 (defn split-newline
   [x]
@@ -276,6 +266,73 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defpartial loan-book-layout [book recip title content]
+  [:div {:class "faq"}
+   [:h2 title]
+   (flash-and-err-messages)
+   [:table {:cellspacing "10"}
+    [:tr
+     [:td {:valign "top"}
+      (if (:image-url book)
+        [:img {:src (:image-url book) :width "70"} ]) ]
+     [:td {:valign "top"} (:steps content) ] ] ]
+   [:table
+    [:tr
+     [:td [:a {:href (format "/secure/loan-book-create?book-id=%s&recip-id=%s" (:id book) (:id recip))
+               :class "btn red-btn" } [:span "It Worked!" ] ] ]
+     [:td [:a {:href (format "/secure/book-not-loanable?book-id=%s" (:id book))
+               :class "btn red-btn"} [:span "Book Isn't Loanable" ] ] ]
+     [:td [:a {:href (format "/secure/loan-book-bad-recip?book-id=%s&recip-id=%s" (:id book) (:id recip))
+               :class "btn red-btn"} [:span "Recip Email Invalid" ] ] ] ] ]
+
+    [:p "If you have tabs enabled in your web browser, you may need to click back
+         to this tab to proceed through the steps." ]
+    (:footer content) ])
+  
+(defpartial loan-book-view-nook [book recip]
+  (loan-book-layout book recip "Nook Loan Steps"
+    {:steps
+      [:ol
+       [:li
+        [:a {:href "http://my.barnesandnoble.com/ebooks/ebookslibrary.html"
+             :target"_blank"} "Click here to login to B&N in a new window" ] ]
+       [:li "In the new window, login to your B&N account" ]
+       [:li "After logging in you should be on the 'My NOOK Library' page" ]
+       [:li "Click 'LendMe' next to the book: " [:b (:title book) ] ]
+       [:li "Complete the Loan form using recipient e-mail address: "
+        [:b (:nook-email recip) ] ]
+       [:li "Click one of the buttons below to tell us what happened" ] ]
+     :footer (list
+      [:p "If you get lost, here is an example video of me loaning a book at B&N's site." ]
+      [:iframe {:src "http://www.screenr.com/embed/dPHs" :width "630" :height "396" :frameborder "0"} ] ) }))
+
+(defpartial loan-book-view-kindle [book recip]
+  (loan-book-layout book recip "Kindle Loan Steps"
+    {:steps
+      [:ol
+       [:li
+        [:a {:href "https://www.amazon.com/gp/digital/fiona/manage/ref=ya_14"
+             :target"_blank"} "Click here to login to Amazon in a new window" ] ]
+       [:li "In the new window, login to your Amazon account" ]
+       [:li "After logging in you should be on the 'Manage Your Kindle' page" ]
+       [:li "Click the 'Actions' button next to the book: " [:b (:title book) ] ]
+       [:li "Click the link: 'Loan this title'" ]
+       [:li "NOTE: If the book is not lendable, you won't see this link under Actions" ]
+       [:li "Complete the Loan form using recipient e-mail address: "
+        [:b (:nook-email recip) ] ]
+       [:li "Click one of the buttons below to tell us what happened" ] ]
+     :footer (list
+      [:p "If you get lost, here are Amazon's instructions:" ]
+      [:p [:img {:src "/css/images/kindle-loan-howto-small.png" } ] ] ) }))
+
+(defpartial loan-book-view [book recip]
+  (layout "Loan Book"
+    (condp = (:platform book)
+      "kindle" (loan-book-view-kindle book recip)
+      "nook" (loan-book-view-nook book recip))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defpartial book-image-cell [book]
   (if (:image-url book)
     [:div {:class "overlay-container"}
@@ -315,10 +372,10 @@
    [:td (:from-email book) ]
    [:td {:class "action"}
      [:a {:class "ack"
-          :href (str "/book-ack-loan/" (:loan-id book)) } "I got it!" ]
+          :href (str "/secure/book-ack-loan?loan-id=" (:loan-id book)) } "I got it!" ]
      [:br ] [:br ]
      [:a {:class "ack"
-          :href (str "/book-ack-loan-fail/" (:loan-id book)) } "No, the loan failed" ] ] ])
+          :href (str "/secure/book-ack-loan-fail?loan-id=" (:loan-id book)) } "No, the loan failed" ] ] ])
 
 (defpartial mytasks-view-to-ack [to-ack]
   (if (not (empty? to-ack))
@@ -483,7 +540,7 @@
        "Optional - Email address you use at amazon.com:" "kindle_small.jpg")
      (input-with-image data :email
        "Required - Email address we should send notifications to:" "email_small.jpg")
-     (check-box-div data :email-opt-out "1"
+     (check-box-div data :email-opt-out "0"
        "Email me books available to borrow (~twice a week):")
      (submit-link "fsettings" "Save") ]))
 

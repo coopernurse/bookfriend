@@ -109,10 +109,12 @@
         ].join(' ');
         
         // GET next page
-        $.get(
-            $trigger.attr('href'),
-            $.proxy(loaded, this)
-        );
+        if ($trigger.attr('href')) {
+            $.get(
+                $trigger.attr('href'),
+                $.proxy(loaded, this)
+            );
+        }
     };
 
     var loaded = function(responseText, status, event) {

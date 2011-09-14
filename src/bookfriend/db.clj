@@ -124,7 +124,7 @@
   })
 
 (defn get-book-status-map [book-ids user]
-  (apply array-map (apply concat (map (fn [id] (list id (bookfriend.db/get-book-status id user))) book-ids))))
+  (apply array-map (apply concat (map (fn [id] (list id (get-book-status id user))) book-ids))))
 
 (defn merge-book-status [books user]
   (let [         book-ids (map #(:id %) books)
@@ -226,18 +226,29 @@
 
 (defn assoc-book-to-book-user [book-user book-map]
   (let [book (book-map (:book-id book-user))]
-    (assoc book-user :author (:author book) :title (:title book))))
+    (assoc book-user :author (:author book) :title (:title book) :platform (:platform book))))
 
 (defn get-recent-book-user [num-books]
   (let [book-users (ds/query :kind book-user-entity :sort [[:modified :desc]] :limit num-books)
           book-ids (set (map #(:book-id %) book-users))
           book-map (array-to-map (get-books book-ids) :id) ]
-    (map #(assoc-book-to-book-user % book-map) (dbg book-users))))
+    (map #(assoc-book-to-book-user % book-map) book-users)))
 
 (defn get-recent-activity [num-books]
   { :total-users (ds/query :kind user-entity :count-only? true)
     :available-books (ds/query :kind book-user-entity :count-only? true :filter [(= :loan-id "") (= :status "have")])
     :activity (get-recent-book-user num-books) })
+
+(defn get-available-books [max-modified limit user]
+  (let [book-users (time (ds/query :kind book-user-entity :sort [[:modified :desc]]
+                     :filter [(< :modified max-modified) (= :loan-id "") (= :status "have")] :limit limit))
+          book-ids (distinct (map #(:book-id %) book-users))
+             books (time (get-books (dbg book-ids)))
+ existing-book-map (array-to-map books :id)
+   book-status-map (get-book-status-map book-ids user) ]
+    (map #(merge %
+      (merge (select-keys (existing-book-map (:book-id %)) [:author :title :id :image-url :product-url :platform])
+        (book-status-map (:book-id %)))) book-users)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; config ;;

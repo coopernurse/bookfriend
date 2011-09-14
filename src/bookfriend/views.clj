@@ -9,32 +9,6 @@
   (:require [bookfriend.db :as db])
   (:require [bookfriend.requtil :as requtil]))
 
-(defn mock-sidebar-loader []
-  { :total-users 302
-    :available-books 992
-    :activity [
-      { :created 1315407000912
-        :status "lend"
-        :title "Moby Dick"
-        :author "Herman Melville"
-        :platform "kindle" }
-      { :created 1315406000912
-        :status "lend"
-        :title "Atlas Shrugged"
-        :author "Ayn Rand and some other really long text that I don't think will fit in the sidebar if it is not truncated"
-        :platform "nook" }
-      { :created 1315307000912
-        :status "read"
-        :title "Programming Clojure"
-        :author "Stuart Halloway"
-        :platform "kindle" }
-      ]})
-
-(def sidebar-loader (atom mock-sidebar-loader))
-
-(defn set-sidebar-loader! [f]
-  (swap! sidebar-loader f))
-
 (defn split-newline
   [x]
   (map clojure.string/trim (filter #(not (= "" %)) (clojure.string/split x #"\n"))))
@@ -128,14 +102,15 @@
     (clear-div) ] ] )
 
 (defpartial recent-activity-row [row]
-  [:div {:class "activity"}
-   [:span {:class "time"} (time-ago (:modified row)) ]
-   " Someone wants to "
-   [:span {:class (:status row) } (str (:status row) " ") ]
-   [:span {:class "booktitle"} (trunc (:title row) 30) ]
-   " by "
-   [:span {:class "author"} (trunc (:author row) 30) ]
-   (str " for the " (:platform row)) ])
+  (let [status (if (= "have" (:status row)) "lend" "read")]
+    [:div {:class "activity"}
+     [:span {:class "time"} (time-ago (:modified row)) ]
+     " Someone wants to "
+     [:span {:class status } (str status " ") ]
+     [:span {:class "booktitle"} (trunc (:title row) 30) ]
+     " by "
+     [:span {:class "author"} (trunc (:author row) 30) ]
+     (str " for the " (:platform row)) ]))
 
 (defpartial sidebar []
   (let [stats (db/get-recent-activity 10)]
@@ -491,7 +466,7 @@
    [:td
     [:h3 {:class "title"} (trunc (:title book) 70) ]
     [:p {:class "author"} (trunc (:author book) 40) ]
-    (if (> (:not-loanable-count book) 0)
+    (if (> (or (:not-loanable-count book) 0) 0)
       [:a {:href "#notlendable_tooltip" :class "tooltiplink"} "May not be lendable"] ) 
     (book-have-want book)
     (book-user-cancel book) ]
@@ -507,11 +482,15 @@
         :class (str "overlay-container book-item" row-css) }
    (book-list-cols book) ])
    
-(defpartial book-list-view [title books]
+(defpartial book-list-view [title books next-url]
   (layout title
     [:table {:class "books-holder"}
      [:tbody {:class "books-holder-body"}
-      (map book-list-row books (cycle ["" " book-item-odd"])) ] ]
+      (map book-list-row books (cycle ["" " book-item-odd"]))
+      (if next-url
+       [:tr {:class "pagination-container"}
+        [:td {:colspan "3"}
+         [:a {:class "pagination" :href next-url} "next" ] ] ]) ]]
     (javascript-tag "
       function book_cancel(book_id) {
         jQuery.get('/secure/book-cancel', { 'book-id' : book_id },
@@ -528,6 +507,19 @@
             });
         return false;
       }")
+    (if next-url
+      (javascript-tag "
+      jQuery(document).ready(function() {
+          jQuery('.books-holder-body').depagify('.books-holder-body a.pagination', {
+              filter    : 'tr',
+              trigger   : '#footer',
+              events    : {
+                  request : function() {
+                      jQuery('.pagination-container').remove();
+                  }
+              }
+          });
+      });"))
     ))
 
 (defpartial settings-view [data]

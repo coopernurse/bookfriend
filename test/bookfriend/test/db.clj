@@ -5,7 +5,7 @@
 
 (use-fixtures :each (ae-testing/local-services :all))
 
-(deftest get-loan-recip-sorts-by-points
+(deftest get-loan-recip-sorts-by-points-test
   (put-user! (create-user-entity "u1" "name" "u1@example.com" "u1-kindle@example.com" "u1-nook@example.com" 0))
   (put-user! (create-user-entity "u2" "name2" "u2@example.com" "u2-kindle@example.com" "u2-nook@example.com" 0))
   (put-user! (create-user-entity "u3" "name2" "u3@example.com" "u3-kindle@example.com" "u3-nook@example.com" 0))
@@ -16,3 +16,42 @@
   (put-book-user "u2" "b1" "want" "")
   (put-book-user "u3" "b1" "want" "")
   (is (="u3" (:id (get-loan-recip "b1")))))
+
+(deftest get-recent-activity-test
+  (put-user! (create-user-entity "u1" "name" "u1@example.com" "u1-kindle@example.com" "u1-nook@example.com" 0))
+  (put-book! (create-book-entity "b1" "nook" "a1" "t1" nil nil 0))
+  (put-book-user "u1" "b1" "have" "")
+  (put-book! (create-book-entity "b2" "kindle" "a2" "t2" nil nil 0))
+  (put-book-user "u1" "b1" "have" "")
+  (put-book-user "u1" "b2" "have" "")
+  (def activity (get-recent-activity 10))
+  (is (>= (:total-users activity) 1))
+  (is (>= (:available-books activity) 2))
+  (is (= "t2" (:title (first (:activity activity)))))
+  (is (= "a2" (:author (first (:activity activity)))))
+  (is (= "kindle" (:platform (first (:activity activity)))))
+  (is (= "t1" (:title (second (:activity activity)))))
+  (is (= "a1" (:author (second (:activity activity)))))
+  (is (= "nook" (:platform (second (:activity activity))))))
+
+(deftest get-available-books-test
+  (put-user! (create-user-entity "u1" "name" "u1@example.com" "u1-kindle@example.com" "u1-nook@example.com" 0))
+  (put-book! (create-book-entity "b1" "nook" "a1" "t1" nil nil 0))
+  (put-book! (create-book-entity "b2" "nook" "a2" "t2" nil nil 0))
+  (put-book! (create-book-entity "b3" "nook" "a3" "t3" nil nil 0))
+  (put-book! (create-book-entity "b4" "nook" "a4" "t4" nil nil 0))
+  (put-book-user "u1" "b1" "have" "")
+  (Thread/sleep 1)
+  (put-book-user "u1" "b2" "have" "")
+  (Thread/sleep 1)
+  (put-book-user "u1" "b3" "have" "")
+  (Thread/sleep 1)
+  (put-book-user "u1" "b4" "have" "")
+  (def avail (get-available-books Long/MAX_VALUE 2 nil))
+  (is (= 2 (count avail)))
+  (is (= "t4" (:title (first avail))))
+  (is (= "t3" (:title (second avail))))
+  (def avail (get-available-books (:modified (second avail)) 2 nil))
+  (is (= 2 (count avail)))
+  (is (= "t2" (:title (first avail))))
+  (is (= "t1" (:title (second avail)))))

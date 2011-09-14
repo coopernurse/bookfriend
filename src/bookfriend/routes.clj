@@ -1,5 +1,6 @@
 (ns bookfriend.routes
   (:use bookfriend.views)
+  (:use [bookfriend.util])
   (:use [noir.core :only (defpage pre-route)])
   (:require [bookfriend.db :as db])
   (:require [bookfriend.email :as email])
@@ -34,8 +35,15 @@
     (let [kindle? (or (= "both" platform) (= "kindle" platform))
             nook? (or (= "both" platform) (= "nook" platform))
             books (search/search keyword kindle? nook?)]
-      (book-list-view "Search Results" (db/merge-book-status books (requtil/get-user))))
+      (book-list-view "Search Results" (db/merge-book-status books (requtil/get-user)) nil))
     (home-view)))
+
+(defpage "/available" {:keys [next]}
+  (let [max-modified (if next (Long/parseLong next) (Long/MAX_VALUE))
+        books (time (db/get-available-books (dbg max-modified) 5 (requtil/get-user)))
+        ids (dbg (map #(:book-id %) books))
+        next-url (if (empty? books) nil (str "/available?next=" (:modified (dbg (last books))))) ]
+    (book-list-view "Available Books" books next-url)))
 
 (defpage "/secure/book-status" {:keys [book-id status] }
   (let [user (requtil/get-user)]

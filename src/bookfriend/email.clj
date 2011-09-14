@@ -45,7 +45,7 @@
   (mail/send
     (mail/make-message :from our-email
                        :to (:email from-user)
-                       :subject (format "Your loan of %s has been acknowledged!" (trunc (dbg (:title book)) 40))
+                       :subject (format "Your loan of %s has been acknowledged!" (trunc (:title book) 40))
                        :html-body (email-body (list
         [:p "Hi there," ]
         [:p "The person you loaned this book to just confirmed that they
@@ -59,7 +59,7 @@
   (mail/send
     (mail/make-message :from our-email
                        :to (:email from-user)
-                       :subject (format "Your loan of %s was not received" (trunc (dbg (:title book)) 40))
+                       :subject (format "Your loan of %s was not received" (trunc (:title book) 40))
                        :html-body (email-body (list
         [:p "Hi there," ]
         [:p "The person you loaned this book to says they have not received
@@ -77,7 +77,7 @@
   (mail/send
     (mail/make-message :from our-email
                        :to (:email to-user)
-                       :subject (format "%s loaned to your %s" (trunc (dbg (:title book)) 40) (:platform book))
+                       :subject (format "%s loaned to your %s" (trunc (:title book) 40) (:platform book))
                        :html-body (email-body (list
         [:p "Hi there," ]
         [:p "A friendly person on the Interwebs just loaned you a book

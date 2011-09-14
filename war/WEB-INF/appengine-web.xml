@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?><appengine-web-app xmlns="http://appengine.google.com/ns/1.0">
 
-  <application>bookfriend</application>
+  <application>bookfriendme</application>
   <version>1</version>
   <static-files/>
   <resource-files/>

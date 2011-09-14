@@ -29,7 +29,7 @@ The site uses:
 ## Pushing to App Engine ##
 
     lein appengine-prepare
-    ~/bin/appengine-java-sdk-1.5.3/bin/appcfg.sh update war
+    ~/bin/appengine-java-sdk-1.5.4/bin/appcfg.sh update war
 
 ## Data model notes
 

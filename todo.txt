@@ -18,19 +18,16 @@ Done:
     207:@app.route('/loan_book_not_loanable/<product_id>')
     216:@app.route('/book_ack_loan/<loan_id>')
     224:@app.route('/book_ack_loan_fail/<loan_id>')
+    243:@app.route('/available')
 
 To Do:
-    243:@app.route('/available')
-      - show available books (no loan, status="have", date descending)
-      - auto paginate
-
-    310:@app.route('/external-want-book')
-    320:@app.route('/external-opt-out')
-    233:@app.route('/recommend')
-    
     Crons:
       - send available books
       - send books to lend
+    
+    310:@app.route('/external-want-book')
+    320:@app.route('/external-opt-out')
+    233:@app.route('/recommend')
 
     Send email when stuff happens
       - book-ack-loan (2 separate emails)

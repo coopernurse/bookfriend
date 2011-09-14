@@ -14,15 +14,13 @@
   (:require [noir.validation :as vali])
   (:require [appengine-magic.services.user :as user]))
 
-(pre-route "/secure/*" {}
+(pre-route [:any "/secure/*"] {}
   (when-not (requtil/logged-in?)
    (response/redirect "/login")))
 
-(pre-route "/admin/*" {}
-  (if-not (requtil/logged-in?)
-    (response/redirect "/login")
-    (if-not (user/user-admin?)
-      (response/redirect "/"))))
+(pre-route [:any "/admin/*"] {}
+  (if-not (and (user/user-logged-in?) (user/user-admin?))
+    (response/redirect "/login-admin")))
 
 (defpage "/" {:as req}
   (home-view))

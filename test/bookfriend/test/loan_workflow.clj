@@ -23,12 +23,31 @@
   (put-book-user u1 b1 "have" "")
   (put-book-user u2 b1 "want" ""))
 
+;  - set date acked=now and success=false on loan record
+;  - email lender to let them know the loan failed
+;  - flash message, refresh my tasks
+;  - loan shouldn't show up in task list
+(deftest loan-ack-fail-test
+  (create-two-user-want-have "u1" "u2" "b1")
+  (def loan (loan-book-create "b1" "u1" "u2"))
+  (clear-mail-service)
+  (loan-ack-fail (:id loan) "u2")
+  (is (= false (:success (get-loan (:id loan)))))
+  (is (= 1 (:points (get-user "u1"))))
+  (is (= 1 (:points (get-user "u2"))))
+  (def msgs (get-mail-messages))
+  (is (= 1 (count msgs)))
+  (is (= "Your loan of t1 was not received" (.getSubject (first msgs))))
+  (is (= "u1@example.com" (.getTo (first msgs) 0)))
+  (is (empty? (get-loans-to-ack "u2"))))
+
 (deftest loan-ack-test
   (create-two-user-want-have "u1" "u2" "b1")
   (def loan (loan-book-create "b1" "u1" "u2"))
   (is (= "b1" (:id (first (dbg (get-loans-to-ack "u2"))))))
   (clear-mail-service)
   (loan-ack (:id loan) "u2")
+  (is (= true (:success (get-loan (:id loan)))))
   ; points are incremented when they add book status, so 1+5 and 1+2
   (is (= 6 (:points (get-user "u1"))))
   (is (= 3 (:points (get-user "u2"))))

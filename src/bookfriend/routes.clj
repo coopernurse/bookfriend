@@ -89,23 +89,24 @@
     (email/send-loan-created book from-user to-user)
     loan))
 
-;  - set date acked=now and success=true on loan record
-;  - email lender to let them know loan worked
-;  - increment from-user by 5 points
-;  - increment to-user by 2 points
-(defn loan-ack [loan-id user-id]
+(defn- loan-ack-private [loan-id user-id success callback]
   (let [loan (db/get-loan loan-id)]
     (if (and loan (= user-id (:to-user-id loan)))
       (let [from-user (db/get-user (:from-user-id loan))
               to-user (db/get-user (:to-user-id loan))
                  book (db/get-book (:book-id loan)) ]
-        (db/put-loan! (assoc loan :date-acked (System/currentTimeMillis) :success true))
-        (email/loan-ack-success book from-user)
-        (db/put-user! (assoc from-user :points (+ 5 (:points from-user))))
-        (db/put-user! (assoc to-user :points (+ 2 (:points to-user))))))))
+        (db/put-loan! (assoc loan :date-acked (System/currentTimeMillis) :success success))
+        (callback book from-user to-user)))))
 
-(defn loan-ack-fail [loan-id]
-  nil)
+(defn loan-ack [loan-id user-id]
+  (loan-ack-private loan-id user-id true (fn [book from-user to-user]
+    (email/loan-ack-success book from-user)
+    (db/put-user! (assoc from-user :points (+ 5 (:points from-user))))
+    (db/put-user! (assoc to-user :points (+ 2 (:points to-user)))))))
+
+(defn loan-ack-fail [loan-id user-id]
+  (loan-ack-private loan-id user-id false (fn [book from-user to-user]
+    (email/loan-ack-fail book from-user to-user))))
 
 (defpage "/secure/loan-book-bad-recip" {:keys [book-id recip-id]}
   (loan-book-bad-recip book-id recip-id)

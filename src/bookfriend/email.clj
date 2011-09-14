@@ -32,6 +32,13 @@
       [:a {:href (format "http://bookfriend.me/external-want-book?user-id=%s&book-id=%s" show-want-user-id (:id book)) }
        "I want this book" ] ]) ] ])
 
+(defn to-user-info [to-user]
+  (list
+    [:p [:b "Borrower Contact Info" ] ]
+    [:p (str "Name: " (:name to-user))
+        [:br ]
+        (str "Email: " (:email to-user)) ]))
+
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn loan-ack-success [book from-user]
@@ -43,6 +50,24 @@
         [:p "Hi there," ]
         [:p "The person you loaned this book to just confirmed that they
            got it. You just earned some karma. Nice one." ]
+        [:table {:border "0" :cellpading "10"}
+         (book-row book nil) ]
+        [:p "Thanks for using bookfriend.me!  Remember to visit us when you
+              have a book to share!" ] )))))
+
+(defn loan-ack-fail [book from-user to-user]
+  (mail/send
+    (mail/make-message :from our-email
+                       :to (:email from-user)
+                       :subject (format "Your loan of %s was not received" (trunc (dbg (:title book)) 40))
+                       :html-body (email-body (list
+        [:p "Hi there," ]
+        [:p "The person you loaned this book to says they have not received
+           it.  We've marked the loan completed in our system, but please
+           email them to see if you can figure out why they didn't receive the
+           book.  You might need to login to your B&N or Amazon account and
+           see if they have record of the loan succeeding" ]
+        (to-user-info to-user)
         [:table {:border "0" :cellpading "10"}
          (book-row book nil) ]
         [:p "Thanks for using bookfriend.me!  Remember to visit us when you
@@ -83,10 +108,7 @@
            has been notified via email and has been asked to acknowledge
            that they received the book.  Use the contact info below if you
            need to reach them." ]
-        [:p [:b "Borrower Contact Info" ] ]
-        [:p (str "Name: " (:name to-user))
-            [:br ]
-            (str "Email: " (:email to-user)) ]
+        (to-user-info to-user)
         [:table {:border "0" :cellpading "10"}
          (book-row book nil) ]
         [:p "Thanks for using bookfriend.me!  Remember to visit us when you

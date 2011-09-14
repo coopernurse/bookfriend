@@ -21,6 +21,8 @@
 ;; entities ;;
 ;;;;;;;;;;;;;;
 
+(def platforms ["nook" "kindle"])
+
 ;; id is the string key the user entered
 (ds/defentity config-entity [^:key id, value])
 
@@ -58,7 +60,7 @@
 
 (defn set-user-platform [u]
   (if u
-    (assoc u :platforms (set (filter #(is-email? ((keyword (str % "-email")) u)) ["nook" "kindle"])))
+    (assoc u :platforms (set (filter #(is-email? ((keyword (str % "-email")) u)) platforms)))
     u))
 
 (defn get-user [id]
@@ -195,7 +197,7 @@
     (and (is-email? (kw old-user)) (not (is-email? (kw new-user))))))
 
 (defn removed-platforms [old-user new-user]
-  (filter #(platform-removed? old-user new-user %) [ "nook" "kindle" ]))
+  (filter #(platform-removed? old-user new-user %) platforms))
 
 (defn prune-user-books [user-id platform]
   (let [book-user (ds/query :kind book-user-entity :filter [(= :user-id user-id) (= :loan-id "")])

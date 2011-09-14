@@ -6,6 +6,7 @@
   (:use [bookfriend.util])
   (:require [noir.validation :as vali])
   (:require [noir.session :as session])
+  (:require [bookfriend.db :as db])
   (:require [bookfriend.requtil :as requtil]))
 
 (defn mock-sidebar-loader []
@@ -128,7 +129,7 @@
 
 (defpartial recent-activity-row [row]
   [:div {:class "activity"}
-   [:span {:class "time"} (time-ago (:created row)) ]
+   [:span {:class "time"} (time-ago (:modified row)) ]
    " Someone wants to "
    [:span {:class (:status row) } (str (:status row) " ") ]
    [:span {:class "booktitle"} (trunc (:title row) 30) ]
@@ -137,7 +138,7 @@
    (str " for the " (:platform row)) ])
 
 (defpartial sidebar []
-  (let [stats (@sidebar-loader)]
+  (let [stats (db/get-recent-activity 10)]
     (list
       [:div {:id "sidebar" :class "right"}
        [:h3 {:class "title"} "Our Community"]

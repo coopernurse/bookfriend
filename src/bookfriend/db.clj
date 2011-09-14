@@ -224,6 +224,21 @@
 (defn get-loan [loan-id]
   (ds/retrieve loan-entity loan-id))
 
+(defn assoc-book-to-book-user [book-user book-map]
+  (let [book (book-map (:book-id book-user))]
+    (assoc book-user :author (:author book) :title (:title book))))
+
+(defn get-recent-book-user [num-books]
+  (let [book-users (ds/query :kind book-user-entity :sort [[:modified :desc]] :limit num-books)
+          book-ids (set (map #(:book-id %) book-users))
+          book-map (array-to-map (get-books book-ids) :id) ]
+    (map #(assoc-book-to-book-user % book-map) (dbg book-users))))
+
+(defn get-recent-activity [num-books]
+  { :total-users (ds/query :kind user-entity :count-only? true)
+    :available-books (ds/query :kind book-user-entity :count-only? true :filter [(= :loan-id "") (= :status "have")])
+    :activity (get-recent-book-user num-books) })
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; config ;;
 ;;;;;;;;;;;;
